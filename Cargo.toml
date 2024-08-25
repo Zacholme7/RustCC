@@ -4,4 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.86"
+clap = { version = "4.5.16", features = ["derive"] }
+clap_derive = "4.5.13"
 regex = "1.10.6"

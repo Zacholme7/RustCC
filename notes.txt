@@ -38,3 +38,40 @@ The lexer
 - identifier: ASCII letter or underscore followed by mix of letters, underscores, and digits
     - case sensative
 - integer constant consists of one or more digits
+
+The parser
+- accepts a list of tokens from the lexer
+- generate Abstract syntax tree
+- can write parser yourself or use generator
+
+- building ast for 
+if a < b {
+    return 2 + 2;
+}
+    - If statement is the root node
+        - condition a < b
+            - left operand, a, 
+            - operator, <
+            - right operand, b
+        - statement body, return 2 + 2;
+    ...
+book has the whole ast
+
+AST defines all of the tokens
+    - it does not have anything that makes up the language
+    - ex: doesnt say return must tend in ;
+
+- need a set of rules definintg how to build a language construct from a list of tokens
+- this is a formal grammar
+
+<program> ::= <function>
+<function> ::= "int" <identifier> "(" "void" ")" "{" <statement> "}"
+<statement> ::= "return" <exp> ";"
+<exp> ::= <int>
+<identifier> ::= ? An identifier token ?
+<int> ::= ? A constant token ?
+
+- each line is a productino rules
+- production rule, non terimal symbola nd terminal symbol
+
+- resursive descent parsing

@@ -1,213 +1,122 @@
-use std::{env, vec::IntoIter};
-use regex::Regex;
-use std::fmt;
+use std::env;
 use std::fs;
-fn main() {
+use std::io::Write;
+use clap::Parser;
+use codegen::ProgramAsm;
+use std::path::PathBuf;
+use anyhow::Result;
+use std::process::Command;
 
-    // get the args and confirm we have a path
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        panic!("Please run the compiler with your .c file")
-    }
+use crate::lexer::program_to_tokens;
+use crate::parser::tokens_to_ast;
+use crate::codegen::ast_to_asm;
 
-    // read in the contents
-    let file = &args[1];
-    let program = fs::read_to_string(file).unwrap();
+mod lexer;
+mod parser;
+mod codegen;
 
-    // setup all of our token regex
-    let token_rx= vec![
-        ("Identifier", Regex::new(r"[a-zA-Z_]\w*\b").unwrap()),
-        ("Constant", Regex::new(r"[0-9]+\b").unwrap()),
-        ("Open Paren", Regex::new(r"\(").unwrap()),
-        ("Close Paren", Regex::new(r"\)").unwrap()),
-        ("Open Brace", Regex::new(r"\{").unwrap()),
-        ("Close Brace", Regex::new(r"\}").unwrap()),
-        ("Semicolon brace", Regex::new(r";").unwrap()),
-    ];
+#[derive(Parser)]
+struct Args {
+    // The source file
+    file: PathBuf,
+    // Signal to run the lexer
+    #[arg(long)]
+    lexer: bool,
+    // Signal to run the parser
+    #[arg(long)]
+    parser: bool,
+    // signal to run codegen
+    #[arg(long)]
+    codegen: bool,
+}
 
-    // go through the input
-    let mut position = 0;
+#[derive(Debug, Clone, Copy)]
+enum Stage {
+    Lexer,
+    Parser,
+    Codegen,
+}
 
-    let mut tokens = Vec::new();
-    while position < program.len() {
-        let slice = &program[position..];
-        let mut matched = false;
+fn main() -> Result<()> {
+    // parse the args
+    let args = Args::parse();
 
-        // go through all of the regexs
-        for (_, regex) in &token_rx {
-            // if we find one
-            if let Some(mat) = regex.find(slice) {
-                // make sure it is the next element in the input
-                if mat.start() == 0 {
-                    tokens.push(mat.as_str());
-                    matched = true;
-                    position += mat.end();
-                    break;
-                }
+    // get all the stages we want to run
+    let stages = if args.lexer || args.parser || args.codegen {
+        vec![
+            (Stage::Lexer, args.lexer),
+            (Stage::Parser, args.parser),
+            (Stage::Codegen, args.codegen),
+        ]
+        .into_iter()
+        .filter(|&(_, enabled)| enabled)
+        .map(|(stage, _)| stage)
+        .collect()
+    } else {
+        vec![Stage::Lexer, Stage::Parser, Stage::Codegen]
+    };
+
+    // preprocess the c file
+    let preprocessed_file = preprocess(args.file.clone());
+
+    // outputs
+    let mut tokens = None;
+    let mut ast = None;
+    let mut asm = None;
+
+    // read in from the preprocessed file
+    let program = fs::read_to_string(preprocessed_file).unwrap();
+
+    // process all of the stages
+    for stage in stages {
+        match stage {
+            Stage::Lexer => {
+                tokens = Some(program_to_tokens(program.clone()));
             }
-        }
-        if !matched { position += 1; }
-    }
-    println!("{:?}", tokens);
-
-    let ast = parse_ast(tokens);
-    let asm = parse_function_asm(ast);
-    println!("{}", asm);
-
-}
-
-fn parse_ast(mut tokens: Vec<&str>) -> AST{
-    let tokens = tokens.into_iter();
-    let program = parse_function(tokens);
-    AST::Program(program)
-}
-
-fn parse_function(mut tokens: IntoIter<&str>) -> FunctionDefinition {
-    let ret_type = tokens.next().unwrap();
-    assert_eq!("int", ret_type);
-    let identifier: Identifier = tokens.next().unwrap().to_string();
-    assert_eq!("(", tokens.next().unwrap());
-    assert_eq!("void", tokens.next().unwrap());
-    assert_eq!(")", tokens.next().unwrap());
-    assert_eq!("{", tokens.next().unwrap());
-    let statement = parse_statement(&mut tokens);
-    assert_eq!("}", tokens.next().unwrap());
-    FunctionDefinition::Function(identifier, statement)
-
-}
-
-fn parse_statement(tokens: &mut IntoIter<&str>) -> Body{
-    assert_eq!("return", tokens.next().unwrap());
-    let exp = parse_expression(tokens);
-    assert_eq!(";", tokens.next().unwrap());
-    Body::Return(exp)
-}
-
-fn parse_expression(tokens: &mut IntoIter<&str>) -> Exp{
-    let exp: usize = tokens.next().unwrap().parse::<usize>().unwrap();
-    Exp::Constant(exp)
-}
-
-fn parse_function_asm(AST::Program(pg): AST) -> Assembly{
-    Assembly::Program(fn_def_to_asm(pg))
-}
-
-fn fn_def_to_asm(
-    FunctionDefinition::Function(identifier, body): FunctionDefinition
-) -> FunctionDefinitionAsm {
-    FunctionDefinitionAsm::FunctionAsm(
-        identifier,
-        get_inst_from_body(body)
-    )
-}
-
-fn get_inst_from_body(Body::Return(exp): Body) -> Vec<Instruction> {
-    let mut instrs : Vec<Instruction> = Vec::new();
-
-    if let Exp::Constant(num) = exp {
-        instrs.push(
-            Instruction::Mov(
-                Operand::Imm(num),
-                Operand::Register
-            ));
-    }
-    instrs.push(Instruction::Ret);
-    instrs
-}
-
-#[derive(Debug)]
-enum Assembly {
-    Program(FunctionDefinitionAsm)
-}
-
-
-
-impl fmt::Display for Assembly {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Assembly::Program(pg) => write!(f, "{}", pg)
-        }
-    }
-}
-
-
-#[derive(Debug)]
-enum FunctionDefinitionAsm {
-    FunctionAsm(Identifier, Vec<Instruction>)
-}
-
-impl fmt::Display for FunctionDefinitionAsm {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FunctionDefinitionAsm::FunctionAsm(
-                identifier,
-                instructions
-            ) => {
-                writeln!(f, "\t.globl {}", identifier);
-                writeln!(f, "{}:", identifier);
-                for instr in instructions {
-                    writeln!(f, "\t{}", instr);
-                }
-                Ok(())
+            Stage::Parser => {
+                ast = Some(tokens_to_ast(tokens.take().expect("Lexer must be run before parser")));
+            }
+            Stage::Codegen => {
+                asm = Some(ast_to_asm(ast.take().expect("Parser must be run before codegen")));
             }
         }
     }
-}
 
 
+    if let Some(asm) = asm {
+        // write assembly to file
+        let asm_file = args.file.with_extension("s");
+        emit_asm(asm, asm_file);
 
-#[derive(Debug)]
-enum Instruction {
-    Mov(Operand, Operand),
-    Ret
-}
-
-impl fmt::Display for Instruction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Instruction::Mov(op1, op2) => {
-                write!(f, "movl {}, {}", op1, op2)
-            }
-            Instruction::Ret => write!(f, "ret")
-        }
+        // assemble and link
+        let assembly_file = args.file.with_extension("s");
+        assemble_and_link(assembly_file);
     }
-}
-
-impl fmt::Display for Operand {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Operand::Register => write!(f, "%eax"),
-            Operand::Imm(number) => write!(f, "${}", number)
-        }
-    }
-}
-
-#[derive(Debug)]
-enum Operand {
-    Imm(usize), 
-    Register
+    Ok(())
 }
 
 
-
-type Identifier = String;
-
-#[derive(Debug)]
-enum AST {
-    Program(FunctionDefinition)
+pub fn emit_asm(asm: ProgramAsm, file_name: PathBuf) {
+    let mut file = fs::File::create(file_name).unwrap();
+    file.write_all(format!("{}", asm).as_bytes()).unwrap();
 }
 
-#[derive(Debug)]
-enum FunctionDefinition {
-    Function(Identifier, Body)
+fn preprocess(file_name: PathBuf) -> PathBuf {
+    let output_file = file_name.with_extension("i");
+    Command::new("gcc")
+        .arg("-E")
+        .arg("-P")
+        .arg(file_name.as_os_str())
+        .arg("-o")
+        .arg(output_file.clone())
+        .output().unwrap();
+    output_file
 }
 
-#[derive(Debug)]
-enum Body {
-    Return(Exp)
-}
-
-#[derive(Debug)]
-enum Exp {
-    Constant(usize)
+fn assemble_and_link(file_name: PathBuf) {
+    Command::new("gcc")
+        .arg(file_name.clone())
+        .arg("-o")
+        .arg(file_name.file_stem().unwrap())
+        .output().unwrap();
 }
