@@ -1,5 +1,6 @@
 use std::{env, vec::IntoIter};
 use regex::Regex;
+use std::fmt;
 use std::fs;
 fn main() {
 
@@ -50,7 +51,9 @@ fn main() {
     println!("{:?}", tokens);
 
     let ast = parse_ast(tokens);
-    println!("{:#?}", ast);
+    let asm = parse_function_asm(ast);
+    println!("{}", asm);
+
 }
 
 fn parse_ast(mut tokens: Vec<&str>) -> AST{
@@ -84,6 +87,108 @@ fn parse_expression(tokens: &mut IntoIter<&str>) -> Exp{
     let exp: usize = tokens.next().unwrap().parse::<usize>().unwrap();
     Exp::Constant(exp)
 }
+
+fn parse_function_asm(AST::Program(pg): AST) -> Assembly{
+    Assembly::Program(fn_def_to_asm(pg))
+}
+
+fn fn_def_to_asm(
+    FunctionDefinition::Function(identifier, body): FunctionDefinition
+) -> FunctionDefinitionAsm {
+    FunctionDefinitionAsm::FunctionAsm(
+        identifier,
+        get_inst_from_body(body)
+    )
+}
+
+fn get_inst_from_body(Body::Return(exp): Body) -> Vec<Instruction> {
+    let mut instrs : Vec<Instruction> = Vec::new();
+
+    if let Exp::Constant(num) = exp {
+        instrs.push(
+            Instruction::Mov(
+                Operand::Imm(num),
+                Operand::Register
+            ));
+    }
+    instrs.push(Instruction::Ret);
+    instrs
+}
+
+#[derive(Debug)]
+enum Assembly {
+    Program(FunctionDefinitionAsm)
+}
+
+
+
+impl fmt::Display for Assembly {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Assembly::Program(pg) => write!(f, "{}", pg)
+        }
+    }
+}
+
+
+#[derive(Debug)]
+enum FunctionDefinitionAsm {
+    FunctionAsm(Identifier, Vec<Instruction>)
+}
+
+impl fmt::Display for FunctionDefinitionAsm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FunctionDefinitionAsm::FunctionAsm(
+                identifier,
+                instructions
+            ) => {
+                writeln!(f, "\t.globl {}", identifier);
+                writeln!(f, "{}:", identifier);
+                for instr in instructions {
+                    writeln!(f, "\t{}", instr);
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+
+
+#[derive(Debug)]
+enum Instruction {
+    Mov(Operand, Operand),
+    Ret
+}
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Instruction::Mov(op1, op2) => {
+                write!(f, "movl {}, {}", op1, op2)
+            }
+            Instruction::Ret => write!(f, "ret")
+        }
+    }
+}
+
+impl fmt::Display for Operand {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Operand::Register => write!(f, "%eax"),
+            Operand::Imm(number) => write!(f, "${}", number)
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Operand {
+    Imm(usize), 
+    Register
+}
+
+
 
 type Identifier = String;
 
