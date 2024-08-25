@@ -1,0 +1,40 @@
+Introduction
+----------------
+- a compiler just translates one language into another
+- assembler takes in assembly program and outputs object file
+- linker combines object files and resolves all symbols/references
+- preprocessor strips comments and executes preprocessor directives
+
+Part 1: The Basics
+----------------
+- lexer breaks up source code into tokens
+    - delimiters, arithmetic symbols, keywords, identifiers
+- parser converts list of tokens into abstract syntax tree (AST)
+    - program in form we can traverse and analyze
+- assembly generation converts AST into assembly 
+- code emission writes assembly code to file to be turned into executable
+
+	.globl	_main                           ## -- Begin function main
+_main:                                  ## @main
+	movl	$2, %eax
+	retq
+
+- .globl main is an assembler directive, provides directions for the assembler
+    - main is a symbol (name for mem address)
+    - says main is a global symbol
+- _main is a label for the ode that follows it
+    - marks the location that a symbol refers to
+
+- linker adds wrapped code, crt0, to handle setup before main runs and teardown
+    - makes funcion call to main
+    - retrives value from main
+    - invokes exit system call passing it return value from main
+
+- symbol resolution: linker associated each symbol with memory address
+then does relocation updatting every symbol to corresponding address instead
+
+The lexer
+- read in a source file and output a list of tokens
+- identifier: ASCII letter or underscore followed by mix of letters, underscores, and digits
+    - case sensative
+- integer constant consists of one or more digits
