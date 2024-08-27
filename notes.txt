@@ -75,3 +75,55 @@ AST defines all of the tokens
 - production rule, non terimal symbola nd terminal symbol
 
 - resursive descent parsing
+
+int main(void) {
+ return ~(-2);
+}
+
+ .globl main
+main:
+ pushq %rbp
+ movq %rsp, %rbp
+ subq $8, %rsp
+ 1 movl $2, 2 -4(%rbp)
+ 3 negl -4(%rbp)
+ 4 movl -4(%rbp), %r10d
+ 5 movl %r10d, -8(%rbp)
+ 6 notl -8(%rbp)
+ 7 movl -8(%rbp), %eax
+ movq %rbp, %rsp
+ popq %rbp
+ ret
+
+- the first three are the function prologue
+- final three are the function epilogue
+- refer to stack address relative to value in RBP register
+- RSP: stack pointer, holds address of to of stack
+    - last used, not first free
+- stacks grow towards lower memeory addresses
+- when you push you decrement rsp, repr lowest address on the stack
+- ex: push $3  
+    1) write vlaue to next empty spot on the stack
+    2) decrement rsp but 8 bytes to point to new top
+- pop copies value at top into RAX register
+
+- stack is divided into stack frames
+- whenever a function it called, it allocated some memory at top of stack by dec stack pointer
+    - this is functions stack frames
+- deallocated stack frame upon returning
+- RBP/base pointer: points to the base of the current stack frame
+- refer to data in current stack frame relative to address stored in RBP
+
+function prologue
+    1) push %rbp    
+        - saves current value of RBP onto the stack, need for restoring
+    2) moveq %rsp, %rbp
+        - makes top of stack the base of the new stack frame
+    3) subq $n, %rsp
+        - decrements the stack pointer by n bytes
+
+function epilogue
+    1) movq %rbp, %rsp
+        - set rsp back to the bottom of the stackk
+    2) popq %rbp 
+        - pops off base pointer, rsp not pointers to top of stack again
