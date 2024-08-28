@@ -1,61 +1,89 @@
 use std::vec::IntoIter;
+use crate::errors::CompileError;
+use crate::lexer::Token;
+use crate::lexer::KeywordType;
 
+// ASDL ast defintion
 type Identifier = String;
 
-// represent the abstract sytax tree
+#[derive(Debug)]
 pub enum ProgramAst {
     Program(FunctionDefinitionAst)
 }
-
+#[derive(Debug)]
 pub enum FunctionDefinitionAst {
     Function(Identifier, Statement)
 }
 
+#[derive(Debug)]
 pub enum Statement {
     Return(Expression)
 }
 
+#[derive(Debug)]
 pub enum Expression {
     Constant(usize)
 }
 
-
-pub fn tokens_to_ast(tokens: Vec<String>) -> ProgramAst {
-    // convert tokens into iterator for easy consuming
-    let mut tokens = tokens.into_iter();
-    ProgramAst::Program(program_from_ast(&mut tokens))
+#[derive(Debug)]
+pub struct Parser {
+    tokens: IntoIter<Token>
 }
 
-fn program_from_ast(tokens: &mut IntoIter<String>) -> FunctionDefinitionAst {
-    expect("int", tokens);
 
-    let identifier: Identifier = tokens.next().unwrap();
+impl Parser {
+    pub fn new(tokens: Vec<Token> ) -> Self {
+        Parser {tokens : tokens.into_iter()}
+    }
 
-    expect("(", tokens);
-    expect("void", tokens);
-    expect(")", tokens);
-    expect("{", tokens);
+    pub fn parse_program(&mut self) -> Result<ProgramAst, CompileError> {
+        let function = self.parse_function()?;
+        // make sure there is nothing remaining
+        if self.tokens.next() != None { return Err(CompileError::InvalidParse(format!("Extra tokens at end of file"))); }
+        Ok(ProgramAst::Program(function))
+    }
 
-    let statement = statement_from_function(tokens);
+    fn parse_function(&mut self) -> Result<FunctionDefinitionAst, CompileError> {
+        self.expect(Token::Keyword(KeywordType::Int))?;
+        let identifier = self.parse_identifier()?; 
+        self.expect(Token::OpenParen)?;
+        self.expect(Token::Keyword(KeywordType::Void))?;
+        self.expect(Token::CloseParen)?;
+        self.expect(Token::OpenBrace)?;
+        let statement = self.parse_statement()?;
+        self.expect(Token::Semicolon)?;
+        self.expect(Token::CloseBrace)?;
+        Ok(FunctionDefinitionAst::Function(identifier, statement))
+    }
 
-    expect("}", tokens);
+    fn parse_identifier(&mut self) -> Result<Identifier, CompileError> {
+        match self.tokens.next() {
+            Some(Token::Identifier(ident)) => Ok(ident),
+            _ => Err(CompileError::InvalidParse("Expected identifier".to_string()))
+        }
+    }
 
-    FunctionDefinitionAst::Function(identifier, statement)
-}
+    fn parse_statement(&mut self) -> Result<Statement, CompileError> {
+        self.expect(Token::Keyword(KeywordType::Return))?;
+        let expression = self.parse_expression()?;
+        Ok(Statement::Return(expression))
+    }
 
-fn statement_from_function(tokens: &mut IntoIter<String>) -> Statement {
-    expect("return", tokens);
-    let exp = expression_from_statement(tokens);
-    expect(";", tokens);
-    Statement::Return(exp)
-}
+    fn parse_expression(&mut self) -> Result<Expression, CompileError> {
+        match self.tokens.next() {
+            Some(Token::Number(num)) => Ok(Expression::Constant(num)),
+            _ => Err(CompileError::InvalidParse("Expected expression".to_string()))
+        }
+    }
 
-fn expression_from_statement(tokens: &mut IntoIter<String>) -> Expression{
-    let exp: usize = tokens.next().unwrap().parse::<usize>().unwrap();
-    Expression::Constant(exp)
-}
+    pub fn expect(&mut self, expected_token: Token) -> Result<bool, CompileError> {
+        let current_token = self.tokens.next().unwrap();
+        
+        if current_token != expected_token {
+            Err(CompileError::InvalidParse(format!("Expected {:?}, Got {:?}", current_token, expected_token)))
+        } else {
+            Ok(true)
+        }
+    }
 
-fn expect(expected: &str, tokens: &mut IntoIter<String>)  {
-    let next_token = tokens.next().unwrap();
-    assert_eq!(expected, next_token);
 }

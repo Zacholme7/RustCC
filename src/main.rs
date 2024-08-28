@@ -1,30 +1,31 @@
 use std::env;
 use std::fs;
 use std::io::Write;
-use clap::Parser;
+use clap::Parser as CmdParser;
 use codegen::ProgramAsm;
 use std::path::PathBuf;
 use anyhow::Result;
 use std::process::Command;
 
-use crate::lexer::program_to_tokens;
-use crate::parser::tokens_to_ast;
+use crate::lexer::{program_to_tokens, Token};
+use crate::parser::Parser;
 use crate::codegen::ast_to_asm;
 
 mod lexer;
+mod errors;
 mod parser;
 mod codegen;
 
-#[derive(Parser)]
+#[derive(CmdParser)]
 struct Args {
     // The source file
     file: PathBuf,
     // Signal to run the lexer
     #[arg(long)]
-    lexer: bool,
+    lex: bool,
     // Signal to run the parser
     #[arg(long)]
-    parser: bool,
+    parse: bool,
     // signal to run codegen
     #[arg(long)]
     codegen: bool,
@@ -38,20 +39,18 @@ enum Stage {
 }
 
 fn main() -> Result<()> {
+
     // parse the args
     let args = Args::parse();
 
     // get all the stages we want to run
-    let stages = if args.lexer || args.parser || args.codegen {
-        vec![
-            (Stage::Lexer, args.lexer),
-            (Stage::Parser, args.parser),
-            (Stage::Codegen, args.codegen),
-        ]
-        .into_iter()
-        .filter(|&(_, enabled)| enabled)
-        .map(|(stage, _)| stage)
-        .collect()
+
+    let stages = if args.codegen {
+        vec![Stage::Lexer, Stage::Parser, Stage::Codegen]
+    } else if args.parse {
+        vec![Stage::Lexer, Stage::Parser]
+    } else if args.lex {
+        vec![Stage::Lexer]
     } else {
         vec![Stage::Lexer, Stage::Parser, Stage::Codegen]
     };
@@ -71,10 +70,11 @@ fn main() -> Result<()> {
     for stage in stages {
         match stage {
             Stage::Lexer => {
-                tokens = Some(program_to_tokens(program.clone()));
+                tokens = Some(program_to_tokens(program.as_str())?);
             }
             Stage::Parser => {
-                ast = Some(tokens_to_ast(tokens.take().expect("Lexer must be run before parser")));
+                let mut parser = Parser::new(tokens.take().unwrap());
+                ast = Some(parser.parse_program()?);
             }
             Stage::Codegen => {
                 asm = Some(ast_to_asm(ast.take().expect("Parser must be run before codegen")));
@@ -86,11 +86,11 @@ fn main() -> Result<()> {
     if let Some(asm) = asm {
         // write assembly to file
         let asm_file = args.file.with_extension("s");
-        emit_asm(asm, asm_file);
+        emit_asm(asm, asm_file.clone());
 
         // assemble and link
-        let assembly_file = args.file.with_extension("s");
-        assemble_and_link(assembly_file);
+        assemble_and_link(asm_file.clone());
+        fs::remove_file(asm_file);
     }
     Ok(())
 }

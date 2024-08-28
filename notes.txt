@@ -171,6 +171,6 @@ instruction = Return(val) | Unary(unary_operator, val src, val dst)
 val = Constant(int) | Var(identifier)
 unary_operator = Complement | Negate
 
-function is a list of instructions
-
+- function is a list of instructions
+- dst must be temp var here not a constant
 
