@@ -76,6 +76,12 @@ AST defines all of the tokens
 
 - resursive descent parsing
 
+
+
+
+Chapter 2
+----------------
+
 int main(void) {
  return ~(-2);
 }
@@ -127,3 +133,44 @@ function epilogue
         - set rsp back to the bottom of the stackk
     2) popq %rbp 
         - pops off base pointer, rsp not pointers to top of stack again
+
+new AST definition
+
+program = Program(function_definition)
+function_definition = Function(identifier name, statement body)
+statement = Return(exp)
+exp = Constant(int) | Unary(unary_operator, exp)
+unary_operator = Complement | Negate
+
+the new grammar 
+
+<program> ::= <function>
+<function> ::= "int" <identifier> "(" "void" ")" "{" <statement> "}"
+<statement> ::= "return" <exp> ";"
+<exp> ::= <int> | <unop> <exp> | "(" <exp> ")"
+<unop> ::= "-" | "~"
+<identifier> ::= ? An identifier token ?
+<int> ::= ? A constant token ?
+
+
+- a new intermediate representation    
+- c expressions can be nested but assembly cant
+    - need to break something like -(~2) into multiple steps
+- use TAC (three address code)
+    - operands of each instruction are constants or variables, not nested expressions
+    - often need to introduce new temp variables
+- why use TAC instead of converting AST to assembler   
+    1) lets us handle major structural transformations seperatly from details of asm
+        - several simpler passes
+    2) well suited for optimizations
+
+TACKY definition 
+program = Program(function_definition)
+function_definition = Function(identifier, 1 instruction* body)
+instruction = Return(val) | Unary(unary_operator, val src, val dst)
+val = Constant(int) | Var(identifier)
+unary_operator = Complement | Negate
+
+function is a list of instructions
+
+
