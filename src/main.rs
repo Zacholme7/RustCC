@@ -1,20 +1,20 @@
+use anyhow::Result;
+use clap::Parser as CmdParser;
+use codegen::ProgramAsm;
 use std::env;
 use std::fs;
 use std::io::Write;
-use clap::Parser as CmdParser;
-use codegen::ProgramAsm;
 use std::path::PathBuf;
-use anyhow::Result;
 use std::process::Command;
 
+use crate::codegen::ast_to_asm;
 use crate::lexer::{program_to_tokens, Token};
 use crate::parser::Parser;
-use crate::codegen::ast_to_asm;
 
-mod lexer;
-mod errors;
-mod parser;
 mod codegen;
+mod errors;
+mod lexer;
+mod parser;
 
 #[derive(CmdParser)]
 struct Args {
@@ -39,7 +39,6 @@ enum Stage {
 }
 
 fn main() -> Result<()> {
-
     // parse the args
     let args = Args::parse();
 
@@ -75,13 +74,15 @@ fn main() -> Result<()> {
             Stage::Parser => {
                 let mut parser = Parser::new(tokens.take().unwrap());
                 ast = Some(parser.parse_program()?);
+                println!("{:?}", ast);
             }
             Stage::Codegen => {
-                asm = Some(ast_to_asm(ast.take().expect("Parser must be run before codegen")));
+                asm = Some(ast_to_asm(
+                    ast.take().expect("Parser must be run before codegen"),
+                ));
             }
         }
     }
-
 
     if let Some(asm) = asm {
         // write assembly to file
@@ -94,7 +95,6 @@ fn main() -> Result<()> {
     }
     Ok(())
 }
-
 
 pub fn emit_asm(asm: ProgramAsm, file_name: PathBuf) {
     let mut file = fs::File::create(file_name).unwrap();
@@ -109,7 +109,8 @@ fn preprocess(file_name: PathBuf) -> PathBuf {
         .arg(file_name.as_os_str())
         .arg("-o")
         .arg(output_file.clone())
-        .output().unwrap();
+        .output()
+        .unwrap();
     output_file
 }
 
@@ -118,5 +119,7 @@ fn assemble_and_link(file_name: PathBuf) {
         .arg(file_name.clone())
         .arg("-o")
         .arg(file_name.file_stem().unwrap())
-        .output().unwrap();
+        .output()
+        .unwrap();
 }
+

@@ -1,7 +1,7 @@
 use crate::errors::CompileError;
 
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
 
 lazy_static! {
     static ref TOKEN_REGEX: Vec<(&'static str, Regex)> = vec![
@@ -17,7 +17,6 @@ lazy_static! {
         ("Hyphen", Regex::new(r"^-").unwrap()),
     ];
 }
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
@@ -59,13 +58,12 @@ pub fn program_to_tokens(program: &str) -> Result<Vec<Token>, CompileError> {
                 "-" => Token::Hyphen,
                 ";" => Token::Semicolon,
                 _ if tok_str.chars().next().unwrap().is_alphabetic() => {
-
                     if ["int", "void", "return"].contains(&tok_str) {
                         match tok_str {
                             "int" => Token::Keyword(KeywordType::Int),
                             "void" => Token::Keyword(KeywordType::Void),
                             "return" => Token::Keyword(KeywordType::Return),
-                            _ => panic!("Will not reach here")
+                            _ => panic!("Will not reach here"),
                         }
                     } else {
                         Token::Identifier(tok_str.to_string())
@@ -74,14 +72,23 @@ pub fn program_to_tokens(program: &str) -> Result<Vec<Token>, CompileError> {
                 _ if tok_str.chars().next().unwrap().is_numeric() => {
                     Token::Number(tok_str.parse::<usize>().unwrap())
                 }
-                _ => return Err(CompileError::InvalidLex(format!("Unable to tokenize: {}", remaining)))
+                _ => {
+                    return Err(CompileError::InvalidLex(format!(
+                        "Unable to tokenize: {}",
+                        remaining
+                    )))
+                }
             };
             tokens.push(token);
             remaining = &remaining[mat.end()..].trim();
         } else {
-            return Err(CompileError::InvalidLex(format!("Unable to tokenize: {}", remaining)));
+            return Err(CompileError::InvalidLex(format!(
+                "Unable to tokenize: {}",
+                remaining
+            )));
         }
     }
 
     Ok(tokens)
 }
+
