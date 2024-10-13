@@ -1,46 +1,40 @@
+use crate::parser::{Expression, FunctionDefinitionAst, ProgramAst, Statement};
 use std::fmt;
-use crate::parser::{Expression, Statement, FunctionDefinitionAst, ProgramAst};
-
 
 type Identifier = String;
 
 // Assembly language tree representation
 pub enum ProgramAsm {
-    Program(FunctionDefinitionAsm)
+    Program(FunctionDefinitionAsm),
 }
 
 pub enum FunctionDefinitionAsm {
-    Function(Identifier, Vec<Instruction>)
+    Function(Identifier, Vec<Instruction>),
 }
 
 pub enum Instruction {
     Mov(Operand, Operand),
-    Ret
+    Ret,
 }
 
 pub enum Operand {
     Imm(usize),
-    Register
+    Register,
 }
 
 /// Parse AST into ASM tree
-pub fn ast_to_asm(
-    ProgramAst::Program(ast): ProgramAst
-) -> ProgramAsm {
+pub fn ast_to_asm(ProgramAst::Program(ast): ProgramAst) -> ProgramAsm {
     ProgramAsm::Program(asm_from_function(ast))
 }
 
 fn asm_from_function(
-    FunctionDefinitionAst::Function(identifier, body): FunctionDefinitionAst
+    FunctionDefinitionAst::Function(identifier, body): FunctionDefinitionAst,
 ) -> FunctionDefinitionAsm {
-    FunctionDefinitionAsm::Function(
-        identifier,
-        instructions_from_statement(body)
-    )
+    FunctionDefinitionAsm::Function(identifier, instructions_from_statement(body))
 }
 
 fn instructions_from_statement(Statement::Return(stmt): Statement) -> Vec<Instruction> {
-    let mut instrs : Vec<Instruction> = Vec::new();
+    let mut instrs: Vec<Instruction> = Vec::new();
 
     let num = match stmt {
         Expression::Constant(num) => num,
@@ -60,7 +54,7 @@ fn instructions_from_statement(Statement::Return(stmt): Statement) -> Vec<Instru
 impl fmt::Display for ProgramAsm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProgramAsm::Program(function_def) => write!(f, "{}", function_def)
+            ProgramAsm::Program(function_def) => write!(f, "{}", function_def),
         }
     }
 }
@@ -68,10 +62,7 @@ impl fmt::Display for ProgramAsm {
 impl fmt::Display for FunctionDefinitionAsm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FunctionDefinitionAsm::Function(
-                identifier,
-                instructions
-            ) => {
+            FunctionDefinitionAsm::Function(identifier, instructions) => {
                 writeln!(f, "\t.globl _{}", identifier)?;
                 writeln!(f, "_{}:", identifier)?;
                 for instr in instructions {
@@ -89,7 +80,7 @@ impl fmt::Display for Instruction {
             Instruction::Mov(op1, op2) => {
                 write!(f, "movl {}, {}", op1, op2)
             }
-            Instruction::Ret => write!(f, "ret")
+            Instruction::Ret => write!(f, "ret"),
         }
     }
 }
@@ -98,7 +89,8 @@ impl fmt::Display for Operand {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Operand::Register => write!(f, "%eax"),
-            Operand::Imm(number) => write!(f, "${}", number)
+            Operand::Imm(number) => write!(f, "${}", number),
         }
     }
 }
+
