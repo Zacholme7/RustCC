@@ -1,91 +1,68 @@
-use crate::parser::{Expression, FunctionDefinitionAst, ProgramAst, Statement};
+use crate::asmgen::*;
 use std::fmt;
 
-type Identifier = String;
-
-// Assembly language tree representation
-pub enum ProgramAsm {
-    Program(FunctionDefinitionAsm),
-}
-
-pub enum FunctionDefinitionAsm {
-    Function(Identifier, Vec<Instruction>),
-}
-
-pub enum Instruction {
-    Mov(Operand, Operand),
-    Ret,
-}
-
-pub enum Operand {
-    Imm(usize),
-    Register,
-}
-
-/// Parse AST into ASM tree
-pub fn ast_to_asm(ProgramAst::Program(ast): ProgramAst) -> ProgramAsm {
-    ProgramAsm::Program(asm_from_function(ast))
-}
-
-fn asm_from_function(
-    FunctionDefinitionAst::Function(identifier, body): FunctionDefinitionAst,
-) -> FunctionDefinitionAsm {
-    FunctionDefinitionAsm::Function(identifier, instructions_from_statement(body))
-}
-
-fn instructions_from_statement(Statement::Return(stmt): Statement) -> Vec<Instruction> {
-    let mut instrs: Vec<Instruction> = Vec::new();
-
-    let num = match stmt {
-        Expression::Constant(num) => num,
-        Expression::Unary(_, _) => todo!(),
-    };
-
-    instrs.push(Instruction::Mov(Operand::Imm(num), Operand::Register));
-    instrs.push(Instruction::Ret);
-    instrs
-}
-
-// Display implementations for codegen
-impl fmt::Display for ProgramAsm {
+impl fmt::Display for AsmProgram {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ProgramAsm::Program(function_def) => write!(f, "{}", function_def),
-        }
+        let AsmProgram::Program(asm_func_def) = self;
+        write!(f, "{}", asm_func_def)?;
+        writeln!(f, ".section .note.GNU-stack,\"\",@progbits")
     }
 }
 
-impl fmt::Display for FunctionDefinitionAsm {
+impl fmt::Display for AsmFunctionDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let AsmFunctionDefinition::Function(iden, instructions) = self;
+        writeln!(f, "\t.globl {}", iden)?;
+        writeln!(f, "{}:", iden)?;
+        writeln!(f, "\tpushq %rbp")?;
+        writeln!(f, "\tmovq  %rsp, %rbp")?;
+        for instr in instructions {
+            write!(f, "{}", instr)?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for AsmInstruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FunctionDefinitionAsm::Function(identifier, instructions) => {
-                writeln!(f, "\t.globl _{}", identifier)?;
-                writeln!(f, "_{}:", identifier)?;
-                for instr in instructions {
-                    writeln!(f, "\t{}", instr)?;
-                }
-                Ok(())
+            AsmInstruction::Mov(op1, op2) => writeln!(f, "\tmovl  {}, {}", op1, op2),
+            AsmInstruction::Unary(unop, op) => writeln!(f, "\t{}  {}", unop, op),
+            AsmInstruction::AllocateStack(offset) => writeln!(f, "\tsubq  ${}, %rsp", offset),
+            AsmInstruction::Ret => {
+                writeln!(f, "\tmovq  %rbp, %rsp")?;
+                writeln!(f, "\tpopq  %rbp")?;
+                writeln!(f, "\tret")
             }
         }
     }
 }
 
-impl fmt::Display for Instruction {
+impl fmt::Display for AsmOperand {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Instruction::Mov(op1, op2) => {
-                write!(f, "movl {}, {}", op1, op2)
-            }
-            Instruction::Ret => write!(f, "ret"),
+            AsmOperand::Reg(reg) => write!(f, "{}", reg),
+            AsmOperand::Stack(offset) => write!(f, "{}(%rbp)", offset),
+            AsmOperand::Imm(value) => write!(f, "${}", value),
+            _ => panic!("Cannot produce codegen for op"),
         }
     }
 }
 
-impl fmt::Display for Operand {
+impl fmt::Display for AsmReg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Operand::Register => write!(f, "%eax"),
-            Operand::Imm(number) => write!(f, "${}", number),
+            AsmReg::AX => write!(f, "%eax"),
+            AsmReg::R10 => write!(f, "%r10d"),
+        }
+    }
+}
+
+impl fmt::Display for AsmUnOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AsmUnOp::Neg => write!(f, "negl"),
+            AsmUnOp::Not => write!(f, "notl"),
         }
     }
 }

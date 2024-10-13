@@ -1,24 +1,22 @@
 use anyhow::Result;
 use clap::Parser as CmdParser;
-use codegen::ProgramAsm;
-use std::env;
 use std::fs;
 use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::codegen::ast_to_asm;
-use crate::lexer::{program_to_tokens, Token};
+use crate::asmgen::{generate_asm_ast, AsmProgram};
+use crate::lexer::program_to_tokens;
 use crate::parser::Parser;
 use crate::tackygen::generate_tacky_ast;
-use crate::asmgen::generate_asm_ast;
 
+mod asmgen;
 mod codegen;
 mod errors;
 mod lexer;
 mod parser;
 mod tackygen;
-mod asmgen;
 
 #[derive(CmdParser)]
 struct Args {
@@ -86,21 +84,16 @@ fn main() -> Result<()> {
                 let mut parser = Parser::new(tokens.take().unwrap());
                 ast = Some(parser.parse_program()?);
                 println!("The ast is {:#?}", ast);
-
             }
             Stage::TackyGen => {
-                tacky_ast = Some(generate_tacky_ast(ast.take().expect("Parser must run before tacky generation"))?);
+                tacky_ast = Some(generate_tacky_ast(
+                    ast.take().expect("Parser must run before tacky generation"),
+                )?);
                 println!("The tacky ast it {:#?}", tacky_ast);
             }
             Stage::Codegen => {
-                let asm_ast = Some(generate_asm_ast(tacky_ast.take().expect("blah")));
-                println!("The asm ast is {:#?}", asm_ast);
-
-                /*
-                asm = Some(ast_to_asm(
-                    ast.take().expect("Parser must be run before codegen"),
-                ));
-                */
+                asm = Some(generate_asm_ast(tacky_ast.take().expect("blah"))?);
+                println!("The asm ast is {:#?}", asm);
             }
         }
     }
@@ -108,25 +101,32 @@ fn main() -> Result<()> {
     if let Some(asm) = asm {
         // write assembly to file
         let asm_file = args.file.with_extension("s");
-        emit_asm(asm, asm_file.clone());
+        emit_asm(&asm, &asm_file);
 
         // assemble and link
-        assemble_and_link(asm_file.clone());
-        //fs::remove_file(asm_file);
+        let executable = assemble_and_link(&asm_file).unwrap();
+        let _ = fs::remove_file(executable);
     }
     Ok(())
 }
 
-pub fn emit_asm(asm: ProgramAsm, file_name: PathBuf) {
+pub fn emit_asm(asm: &AsmProgram, file_name: &Path) {
     let mut file = fs::File::create(file_name).unwrap();
-    file.write_all(format!("{}", asm).as_bytes()).unwrap();
+    file.write_all(format!("{}", asm).as_bytes()).unwrap()
 }
 
-// Compile driver
+fn assemble_and_link(asm_file: &Path) -> Result<PathBuf> {
+    let output_file = asm_file.with_extension("");
+    Command::new("gcc")
+        .arg(asm_file)
+        .arg("-o")
+        .arg(&output_file)
+        .output()
+        .unwrap();
+    Ok(output_file)
+}
 
-// 1) Preprocess the file
-// -E: tells gcc to only run the preprocessor
-// -P: tells gcc not to emit any linemarkets
+// The preprocess function remains the same
 fn preprocess(file_name: PathBuf) -> PathBuf {
     let output_file = file_name.with_extension("i");
     Command::new("gcc")
@@ -136,18 +136,6 @@ fn preprocess(file_name: PathBuf) -> PathBuf {
         .arg("-o")
         .arg(output_file.clone())
         .output()
-        .unwrap();
+        .expect("Failed to preprocess file");
     output_file
-}
-
-// 2) Our compiler will run and produce a .s file
-
-// 3) Assemble and link the file to produce executable
-fn assemble_and_link(file_name: PathBuf) {
-    Command::new("gcc")
-        .arg(file_name.clone())
-        .arg("-o")
-        .arg(file_name.file_stem().unwrap())
-        .output()
-        .unwrap();
 }

@@ -104,6 +104,8 @@ fn generate_asm_function(
                 if let (AsmOperand::Stack(_), AsmOperand::Stack(_)) = (op1.clone(), op2.clone()) {
                     fixed_asm_instructions.push(AsmInstruction::Mov(op1.clone(), AsmOperand::Reg(AsmReg::R10)));
                     fixed_asm_instructions.push(AsmInstruction::Mov(AsmOperand::Reg(AsmReg::R10), op2.clone()));
+                } else {
+                    fixed_asm_instructions.push(asm_instruction.clone())
                 }
             }
             _ => fixed_asm_instructions.push(asm_instruction.clone())
