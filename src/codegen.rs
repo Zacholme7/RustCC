@@ -38,14 +38,10 @@ fn instructions_from_statement(Statement::Return(stmt): Statement) -> Vec<Instru
 
     let num = match stmt {
         Expression::Constant(num) => num,
-        Expression::Unary(_, _) => todo!()
+        Expression::Unary(_, _) => todo!(),
     };
 
-    instrs.push(
-        Instruction::Mov(
-            Operand::Imm(num),
-            Operand::Register
-    ));
+    instrs.push(Instruction::Mov(Operand::Imm(num), Operand::Register));
     instrs.push(Instruction::Ret);
     instrs
 }
@@ -93,4 +89,3 @@ impl fmt::Display for Operand {
         }
     }
 }
-

@@ -10,12 +10,13 @@ use std::process::Command;
 use crate::codegen::ast_to_asm;
 use crate::lexer::{program_to_tokens, Token};
 use crate::parser::Parser;
+use crate::tackygen::generate_tacky_ast;
 
 mod codegen;
-mod tackygen;
 mod errors;
 mod lexer;
 mod parser;
+mod tackygen;
 
 #[derive(CmdParser)]
 struct Args {
@@ -27,6 +28,9 @@ struct Args {
     // Signal to run the parser
     #[arg(long)]
     parse: bool,
+    // Signal to run tacky generation
+    #[arg(long)]
+    tacky: bool,
     // signal to run codegen
     #[arg(long)]
     codegen: bool,
@@ -36,6 +40,7 @@ struct Args {
 enum Stage {
     Lexer,
     Parser,
+    TackyGen,
     Codegen,
 }
 
@@ -45,13 +50,15 @@ fn main() -> Result<()> {
 
     // get all the stages we want to run
     let stages = if args.codegen {
-        vec![Stage::Lexer, Stage::Parser, Stage::Codegen]
+        vec![Stage::Lexer, Stage::Parser, Stage::TackyGen, Stage::Codegen]
+    } else if args.tacky {
+        vec![Stage::Lexer, Stage::Parser, Stage::TackyGen]
     } else if args.parse {
         vec![Stage::Lexer, Stage::Parser]
     } else if args.lex {
         vec![Stage::Lexer]
     } else {
-        vec![Stage::Lexer, Stage::Parser, Stage::Codegen]
+        vec![Stage::Lexer, Stage::Parser, Stage::TackyGen, Stage::Codegen]
     };
 
     // preprocess the c file
@@ -60,6 +67,7 @@ fn main() -> Result<()> {
     // outputs
     let mut tokens = None;
     let mut ast = None;
+    let mut tacky_ast = None;
     let mut asm = None;
 
     // read in from the preprocessed file
@@ -70,15 +78,22 @@ fn main() -> Result<()> {
         match stage {
             Stage::Lexer => {
                 tokens = Some(program_to_tokens(program.as_str())?);
+                println!("The tokens are {:?}", tokens);
             }
             Stage::Parser => {
                 let mut parser = Parser::new(tokens.take().unwrap());
                 ast = Some(parser.parse_program()?);
-                println!("{:?}", ast);
+                println!("The ast is {:?}", ast);
+
+            }
+            Stage::TackyGen => {
+                tacky_ast = Some(generate_tacky_ast(ast.take().expect("Parser must run before tacky generation"))?);
+                println!("The tacky ast it {:?}", tacky_ast);
             }
             Stage::Codegen => {
-                println!("ran here");
-                asm = Some(ast_to_asm(ast.take().expect("Parser must be run before codegen")));
+                asm = Some(ast_to_asm(
+                    ast.take().expect("Parser must be run before codegen"),
+                ));
             }
         }
     }
@@ -99,7 +114,6 @@ pub fn emit_asm(asm: ProgramAsm, file_name: PathBuf) {
     let mut file = fs::File::create(file_name).unwrap();
     file.write_all(format!("{}", asm).as_bytes()).unwrap();
 }
-
 
 // Compile driver
 
@@ -130,4 +144,3 @@ fn assemble_and_link(file_name: PathBuf) {
         .output()
         .unwrap();
 }
-

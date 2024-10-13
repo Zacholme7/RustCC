@@ -54,9 +54,8 @@ pub fn program_to_tokens(program: &str) -> Result<Vec<Token>, CompileError> {
             // extract this match
             let mat = regex.find(remaining).unwrap();
             let tok_str = mat.as_str();
-            println!("{tok_str}");
 
-            // figure out which match we have 
+            // figure out which match we have
             let token = match tok_str {
                 "{" => Token::OpenBrace,
                 "}" => Token::CloseBrace,
@@ -100,4 +99,3 @@ pub fn program_to_tokens(program: &str) -> Result<Vec<Token>, CompileError> {
 
     Ok(tokens)
 }
-

@@ -1,8 +1,8 @@
-use std::vec::IntoIter;
-use std::iter::Peekable;
 use crate::errors::CompileError;
 use crate::lexer::KeywordType;
 use crate::lexer::Token;
+use std::iter::Peekable;
+use std::vec::IntoIter;
 
 // ASDL ast defintion
 type Identifier = String;
@@ -36,18 +36,19 @@ pub enum Expression {
 #[derive(Debug)]
 pub enum UnaryOperator {
     Complement,
-    Negate
+    Negate,
 }
-
 
 #[derive(Debug)]
 pub struct Parser {
-    tokens: Peekable<IntoIter<Token>>
+    tokens: Peekable<IntoIter<Token>>,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token> ) -> Self {
-        Parser {tokens : tokens.into_iter().peekable()}
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Parser {
+            tokens: tokens.into_iter().peekable(),
+        }
     }
 
     // <program> ::= <function>
@@ -112,7 +113,9 @@ impl Parser {
                 self.expect(Token::CloseParen)?;
                 Ok(inner_exp)
             }
-            _ => Err(CompileError::InvalidParse("Expected expression".to_string()))
+            _ => Err(CompileError::InvalidParse(
+                "Expected expression".to_string(),
+            )),
         }
     }
 
@@ -121,7 +124,9 @@ impl Parser {
         match self.tokens.next() {
             Some(Token::Tilde) => Ok(UnaryOperator::Complement),
             Some(Token::Hyphen) => Ok(UnaryOperator::Negate),
-            _ => Err(CompileError::InvalidParse("Expected unary opeartor".to_string()))
+            _ => Err(CompileError::InvalidParse(
+                "Expected unary opeartor".to_string(),
+            )),
         }
     }
 
@@ -147,4 +152,3 @@ impl Parser {
         }
     }
 }
-
