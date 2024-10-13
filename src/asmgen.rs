@@ -3,13 +3,13 @@ use crate::tackygen::*;
 use std::collections::HashMap;
 
 //program = Program(function_definition)
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AsmProgram {
     Program(AsmFunctionDefinition),
 }
 
 //function_definition = Function(identifier name, instruction* instructions)
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AsmFunctionDefinition {
     Function(String, Vec<AsmInstruction>),
 }
@@ -18,11 +18,11 @@ pub enum AsmFunctionDefinition {
 // | Unary(unary_operator, operand)
 // | AllocateStack(int)
 // | Ret
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AsmInstruction {
     Mov(AsmOperand, AsmOperand),
     Unary(AsmUnOp, AsmOperand),
-    AllocateStack(usize),
+    AllocateStack(i32),
     Ret,
 }
 
@@ -67,15 +67,14 @@ fn generate_asm_function(
 
     // 2) replace pseudoregisters with stack offsets
     let mut offset_map: HashMap<AsmOperand, i32> = HashMap::new();
-    let mut next_offset = -4;
+    let mut next_offset = 0;
 
     // closure to replace pseudo operands
     let mut replace_pseudo = |op: &mut AsmOperand| {
         if let AsmOperand::Pseudo(_) = op {
             let offset = *offset_map.entry(op.clone()).or_insert_with(|| {
-                let offset = next_offset;
                 next_offset -= 4;
-                offset
+                next_offset
             });
             *op = AsmOperand::Stack(offset);
         }
@@ -96,8 +95,21 @@ fn generate_asm_function(
         }
     }
 
-    // third pass to fix up instructions
-    Ok(AsmFunctionDefinition::Function(iden, asm_instructions))
+    // 3) fix up instructions
+    let mut fixed_asm_instructions: Vec<AsmInstruction> = vec![];
+    asm_instructions.insert(0, AsmInstruction::AllocateStack(next_offset));
+    for asm_instruction in asm_instructions.iter_mut() {
+        match asm_instruction {
+            AsmInstruction::Mov(op1, op2) => {
+                if let (AsmOperand::Stack(_), AsmOperand::Stack(_)) = (op1.clone(), op2.clone()) {
+                    fixed_asm_instructions.push(AsmInstruction::Mov(op1.clone(), AsmOperand::Reg(AsmReg::R10)));
+                    fixed_asm_instructions.push(AsmInstruction::Mov(AsmOperand::Reg(AsmReg::R10), op2.clone()));
+                }
+            }
+            _ => fixed_asm_instructions.push(asm_instruction.clone())
+        }
+    }
+    Ok(AsmFunctionDefinition::Function(iden, fixed_asm_instructions))
 }
 
 // Parse the tacky instructions and generate asm instructions
