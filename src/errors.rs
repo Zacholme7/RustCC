@@ -5,6 +5,7 @@ use std::fmt;
 pub enum CompileError {
     InvalidLex(String),
     InvalidParse(String),
+    InvalidTackyGen(String),
 }
 
 impl fmt::Display for CompileError {
@@ -12,6 +13,7 @@ impl fmt::Display for CompileError {
         match self {
             CompileError::InvalidLex(msg) => write!(f, "Lexer error: {}", msg),
             CompileError::InvalidParse(msg) => write!(f, "Parser error: {}", msg),
+            CompileError::InvalidTackyGen(msg) => write!(f, "Tacky gen error: {}", msg),
         }
     }
 }

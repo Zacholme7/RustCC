@@ -12,6 +12,7 @@ use crate::lexer::{program_to_tokens, Token};
 use crate::parser::Parser;
 
 mod codegen;
+mod tackygen;
 mod errors;
 mod lexer;
 mod parser;
