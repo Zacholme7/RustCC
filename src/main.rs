@@ -44,7 +44,6 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     // get all the stages we want to run
-
     let stages = if args.codegen {
         vec![Stage::Lexer, Stage::Parser, Stage::Codegen]
     } else if args.parse {
@@ -77,6 +76,7 @@ fn main() -> Result<()> {
                 ast = Some(parser.parse_program()?);
             }
             Stage::Codegen => {
+                println!("ran here");
                 asm = Some(ast_to_asm(ast.take().expect("Parser must be run before codegen")));
             }
         }
@@ -90,7 +90,7 @@ fn main() -> Result<()> {
 
         // assemble and link
         assemble_and_link(asm_file.clone());
-        fs::remove_file(asm_file);
+        //fs::remove_file(asm_file);
     }
     Ok(())
 }
@@ -101,6 +101,12 @@ pub fn emit_asm(asm: ProgramAsm, file_name: PathBuf) {
     file.write_all(format!("{}", asm).as_bytes()).unwrap();
 }
 
+
+// Compile driver
+
+// 1) Preprocess the file
+// -E: tells gcc to only run the preprocessor
+// -P: tells gcc not to emit any linemarkets
 fn preprocess(file_name: PathBuf) -> PathBuf {
     let output_file = file_name.with_extension("i");
     Command::new("gcc")
@@ -113,6 +119,9 @@ fn preprocess(file_name: PathBuf) -> PathBuf {
     output_file
 }
 
+// 2) Our compiler will run and produce a .s file
+
+// 3) Assemble and link the file to produce executable
 fn assemble_and_link(file_name: PathBuf) {
     Command::new("gcc")
         .arg(file_name.clone())

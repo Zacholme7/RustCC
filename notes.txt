@@ -104,12 +104,12 @@ main:
 - the first three are the function prologue
 - final three are the function epilogue
 - refer to stack address relative to value in RBP register
-- RSP: stack pointer, holds address of to of stack
+- RSP: stack pointer, holds address of top of stack
     - last used, not first free
 - stacks grow towards lower memeory addresses
 - when you push you decrement rsp, repr lowest address on the stack
 - ex: push $3  
-    1) write vlaue to next empty spot on the stack
+    1) write value to next empty spot on the stack
     2) decrement rsp but 8 bytes to point to new top
 - pop copies value at top into RAX register
 

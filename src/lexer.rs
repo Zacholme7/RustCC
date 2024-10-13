@@ -4,6 +4,7 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 lazy_static! {
+    // regular expression that will match each specific token
     static ref TOKEN_REGEX: Vec<(&'static str, Regex)> = vec![
         ("Identifier", Regex::new(r"^[a-zA-Z_]\w*\b").unwrap()),
         ("Constant", Regex::new(r"^[0-9]+\b").unwrap()),
@@ -19,6 +20,7 @@ lazy_static! {
 }
 
 
+// All of the tokens that our Lexer recognizes
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Keyword(KeywordType),
@@ -34,6 +36,7 @@ pub enum Token {
     Semicolon,
 }
 
+// Reserved Keywords
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeywordType {
     Int,
@@ -45,10 +48,16 @@ pub fn program_to_tokens(program: &str) -> Result<Vec<Token>, CompileError> {
     let mut tokens = Vec::new();
     let mut remaining = program.trim();
 
+    // while we have parts of the program left to lex
     while !remaining.is_empty() {
+        // see if we have a match
         if let Some((_, regex)) = TOKEN_REGEX.iter().find(|(_, r)| r.is_match(remaining)) {
+            // extract this match
             let mat = regex.find(remaining).unwrap();
             let tok_str = mat.as_str();
+            println!("{tok_str}");
+
+            // figure out which match we have 
             let token = match tok_str {
                 "{" => Token::OpenBrace,
                 "}" => Token::CloseBrace,

@@ -42,7 +42,11 @@ fn asm_from_function(
 fn instructions_from_statement(Statement::Return(stmt): Statement) -> Vec<Instruction> {
     let mut instrs : Vec<Instruction> = Vec::new();
 
-    let Expression::Constant(num) = stmt;
+    let num = match stmt {
+        Expression::Constant(num) => num,
+        Expression::Unary(_, _) => todo!()
+    };
+
     instrs.push(
         Instruction::Mov(
             Operand::Imm(num),
