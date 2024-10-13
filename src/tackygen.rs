@@ -2,6 +2,7 @@ use crate::errors::CompileError;
 use crate::parser::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+// identifier to represent temp registers in tacky repr
 static ID_IDEN: AtomicUsize = AtomicUsize::new(0);
 
 //program = Program(function_definition)
@@ -45,7 +46,7 @@ pub fn generate_tacky_ast(ast: ProgramAst) -> Result<TackyProgram, CompileError>
 }
 
 // from a ast function, generate a tacky function
-pub fn generate_tacky_function(
+fn generate_tacky_function(
     ast_function: FunctionDefinitionAst,
 ) -> Result<TackyFunctionDefinition, CompileError> {
     // extract out the expression
@@ -62,7 +63,7 @@ pub fn generate_tacky_function(
 }
 
 // from a ast statement, generate a list of tacky instructions
-pub fn generate_tacky_instructions(
+fn generate_tacky_instructions(
     ast_expression: Expression,
     tacky_instructions: &mut Vec<TackyInstruction>,
 ) -> Result<TackyVal, CompileError> {
@@ -80,7 +81,7 @@ pub fn generate_tacky_instructions(
 }
 
 // From a ast unary operator, construt a tacky unary operator
-pub fn generate_tacky_unop(ast_unary_op: UnaryOperator) -> Result<TackyUnaryOp, CompileError> {
+fn generate_tacky_unop(ast_unary_op: UnaryOperator) -> Result<TackyUnaryOp, CompileError> {
     match ast_unary_op {
         UnaryOperator::Complement => Ok(TackyUnaryOp::Complement),
         UnaryOperator::Negate => Ok(TackyUnaryOp::Negate),
@@ -89,7 +90,7 @@ pub fn generate_tacky_unop(ast_unary_op: UnaryOperator) -> Result<TackyUnaryOp, 
 }
 
 // return a globally unique, temporary variable name for tmp register naming
-pub fn make_temporary() -> String {
+fn make_temporary() -> String {
     // using atomic usize here lets us get around unsafe code as modifying static mut int is unsafe
     // but incrementing an atomic counter is not
     let val = ID_IDEN.fetch_add(1, Ordering::Relaxed);
