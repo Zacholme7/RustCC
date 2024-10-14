@@ -9,32 +9,32 @@ type Identifier = String;
 
 // program = Program(function_definition)
 #[derive(Debug)]
-pub enum ProgramAst {
-    Program(FunctionDefinitionAst),
+pub enum AstProgram {
+    Program(AstFunctionDefinition),
 }
 
 // function_definition = Function(identifier name, statement body)
 #[derive(Debug)]
-pub enum FunctionDefinitionAst {
-    Function(Identifier, Statement),
+pub enum AstFunctionDefinition {
+    Function(Identifier, AstStatement),
 }
 
 // statement = Return(exp)
 #[derive(Debug)]
-pub enum Statement {
-    Return(Expression),
+pub enum AstStatement {
+    Return(AstExpression),
 }
 
 // exp = Constant(int) | Unary(unary_operator, exp)
 #[derive(Debug)]
-pub enum Expression {
+pub enum AstExpression {
     Constant(usize),
-    Unary(UnaryOperator, Box<Expression>),
+    Unary(AstUnaryOp, Box<AstExpression>),
 }
 
 // unary_operator = Complement | Negate
 #[derive(Debug)]
-pub enum UnaryOperator {
+pub enum AstUnaryOp {
     Complement,
     Negate,
 }
@@ -52,7 +52,7 @@ impl Parser {
     }
 
     // <program> ::= <function>
-    pub fn parse_program(&mut self) -> Result<ProgramAst, CompileError> {
+    pub fn parse_program(&mut self) -> Result<AstProgram, CompileError> {
         let function = self.parse_function()?;
         // make sure there is nothing remaining
         if self.tokens.next().is_some() {
@@ -60,11 +60,11 @@ impl Parser {
                 "Extra token at end of file".to_string(),
             ));
         }
-        Ok(ProgramAst::Program(function))
+        Ok(AstProgram::Program(function))
     }
 
     // <function> ::= "int" <identifier> "(" "void" ")" "{" <statement> "}"
-    fn parse_function(&mut self) -> Result<FunctionDefinitionAst, CompileError> {
+    fn parse_function(&mut self) -> Result<AstFunctionDefinition, CompileError> {
         self.expect(Token::Keyword(KeywordType::Int))?;
         let identifier = self.parse_identifier()?;
         self.expect(Token::OpenParen)?;
@@ -74,7 +74,7 @@ impl Parser {
         let statement = self.parse_statement()?;
         self.expect(Token::Semicolon)?;
         self.expect(Token::CloseBrace)?;
-        Ok(FunctionDefinitionAst::Function(identifier, statement))
+        Ok(AstFunctionDefinition::Function(identifier, statement))
     }
 
     // <identifier> ::= ? An identifier token ?
@@ -88,14 +88,14 @@ impl Parser {
     }
 
     // <statement> ::= "return" <exp> ";"
-    fn parse_statement(&mut self) -> Result<Statement, CompileError> {
+    fn parse_statement(&mut self) -> Result<AstStatement, CompileError> {
         self.expect(Token::Keyword(KeywordType::Return))?;
         let expression = self.parse_expression()?;
-        Ok(Statement::Return(expression))
+        Ok(AstStatement::Return(expression))
     }
 
     // <exp> ::= <int> | <unop> <exp> | "(" <exp> ")"
-    fn parse_expression(&mut self) -> Result<Expression, CompileError> {
+    fn parse_expression(&mut self) -> Result<AstExpression, CompileError> {
         let next_token = self.tokens.peek();
         match next_token {
             Some(Token::Number(_)) => {
@@ -105,7 +105,7 @@ impl Parser {
             Some(Token::Tilde) | Some(Token::Hyphen) => {
                 let operator = self.parse_unop()?;
                 let inner_exp = self.parse_expression()?;
-                Ok(Expression::Unary(operator, Box::new(inner_exp)))
+                Ok(AstExpression::Unary(operator, Box::new(inner_exp)))
             }
             Some(Token::OpenParen) => {
                 self.tokens.next();
@@ -120,10 +120,10 @@ impl Parser {
     }
 
     // <unop> ::= "-" | "~"
-    fn parse_unop(&mut self) -> Result<UnaryOperator, CompileError> {
+    fn parse_unop(&mut self) -> Result<AstUnaryOp, CompileError> {
         match self.tokens.next() {
-            Some(Token::Tilde) => Ok(UnaryOperator::Complement),
-            Some(Token::Hyphen) => Ok(UnaryOperator::Negate),
+            Some(Token::Tilde) => Ok(AstUnaryOp::Complement),
+            Some(Token::Hyphen) => Ok(AstUnaryOp::Negate),
             _ => Err(CompileError::InvalidParse(
                 "Expected unary opeartor".to_string(),
             )),
@@ -131,9 +131,9 @@ impl Parser {
     }
 
     //<int> ::= ? A constant token ?
-    fn parse_int(&mut self) -> Result<Expression, CompileError> {
+    fn parse_int(&mut self) -> Result<AstExpression, CompileError> {
         match self.tokens.next() {
-            Some(Token::Number(num)) => Ok(Expression::Constant(num)),
+            Some(Token::Number(num)) => Ok(AstExpression::Constant(num)),
             _ => Err(CompileError::InvalidParse("Expected integer".to_string())),
         }
     }

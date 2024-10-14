@@ -13,6 +13,10 @@ lazy_static! {
         ("Open Paren", Regex::new(r"^\(").unwrap()),
         ("Close Paren", Regex::new(r"^\)").unwrap()),
         ("Semicolon", Regex::new(r"^;").unwrap()),
+        ("Plus", Regex::new(r"^\+").unwrap()),
+        ("Asterisk", Regex::new(r"^\*").unwrap()),
+        ("Forward Slash", Regex::new(r"^/").unwrap()),
+        ("Percent", Regex::new(r"^%").unwrap()),
         ("Tilde", Regex::new(r"^~").unwrap()),
         ("Two Hyphen", Regex::new(r"^--").unwrap()),
         ("Hyphen", Regex::new(r"^-").unwrap()),
@@ -29,6 +33,10 @@ pub enum Token {
     CloseBrace,
     OpenParen,
     CloseParen,
+    Plus,
+    Asterisk,
+    ForwardSlash,
+    PercentSign,
     Tilde,
     TwoHyphen,
     Hyphen,
@@ -53,7 +61,7 @@ pub fn program_to_tokens(program: &str) -> Result<Vec<Token>, CompileError> {
         if let Some((_, regex)) = TOKEN_REGEX.iter().find(|(_, r)| r.is_match(remaining)) {
             // extract this match
             let mat = regex.find(remaining).unwrap();
-            let tok_str = mat.as_str();
+            let tok_str = mat.as_str().trim();
 
             // figure out which match we have
             let token = match tok_str {
@@ -65,6 +73,10 @@ pub fn program_to_tokens(program: &str) -> Result<Vec<Token>, CompileError> {
                 "--" => Token::TwoHyphen,
                 "-" => Token::Hyphen,
                 ";" => Token::Semicolon,
+                "+" => Token::Plus,
+                "*" => Token::Asterisk,
+                "/" => Token::ForwardSlash,
+                "%" => Token::PercentSign,
                 _ if tok_str.chars().next().unwrap().is_alphabetic() => {
                     if ["int", "void", "return"].contains(&tok_str) {
                         match tok_str {
@@ -88,7 +100,7 @@ pub fn program_to_tokens(program: &str) -> Result<Vec<Token>, CompileError> {
                 }
             };
             tokens.push(token);
-            remaining = &remaining[mat.end()..].trim();
+            remaining = remaining[mat.end()..].trim();
         } else {
             return Err(CompileError::InvalidLex(format!(
                 "Unable to tokenize: {}",

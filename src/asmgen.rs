@@ -51,7 +51,6 @@ pub enum AsmReg {
 
 // Parse the tacky ast and convert it into an asm ast
 pub fn generate_asm_ast(tacky_ast: TackyProgram) -> Result<AsmProgram, CompileError> {
-    // first pass to translate into asm ast
     let TackyProgram::Program(tacky_func_def) = tacky_ast;
     let asm_function = generate_asm_function(tacky_func_def)?;
     Ok(AsmProgram::Program(asm_function))
@@ -85,11 +84,9 @@ fn generate_asm_function(
             AsmInstruction::Mov(op1, op2) => {
                 replace_pseudo(op1);
                 replace_pseudo(op2);
-
             }
             AsmInstruction::Unary(_, op) => {
                 replace_pseudo(op);
-
             }
             _ => continue,
         }
@@ -102,16 +99,25 @@ fn generate_asm_function(
         match asm_instruction {
             AsmInstruction::Mov(op1, op2) => {
                 if let (AsmOperand::Stack(_), AsmOperand::Stack(_)) = (op1.clone(), op2.clone()) {
-                    fixed_asm_instructions.push(AsmInstruction::Mov(op1.clone(), AsmOperand::Reg(AsmReg::R10)));
-                    fixed_asm_instructions.push(AsmInstruction::Mov(AsmOperand::Reg(AsmReg::R10), op2.clone()));
+                    fixed_asm_instructions.push(AsmInstruction::Mov(
+                        op1.clone(),
+                        AsmOperand::Reg(AsmReg::R10),
+                    ));
+                    fixed_asm_instructions.push(AsmInstruction::Mov(
+                        AsmOperand::Reg(AsmReg::R10),
+                        op2.clone(),
+                    ));
                 } else {
                     fixed_asm_instructions.push(asm_instruction.clone())
                 }
             }
-            _ => fixed_asm_instructions.push(asm_instruction.clone())
+            _ => fixed_asm_instructions.push(asm_instruction.clone()),
         }
     }
-    Ok(AsmFunctionDefinition::Function(iden, fixed_asm_instructions))
+    Ok(AsmFunctionDefinition::Function(
+        iden,
+        fixed_asm_instructions,
+    ))
 }
 
 // Parse the tacky instructions and generate asm instructions

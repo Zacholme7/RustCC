@@ -78,22 +78,16 @@ fn main() -> Result<()> {
         match stage {
             Stage::Lexer => {
                 tokens = Some(program_to_tokens(program.as_str())?);
-                println!("The tokens are {:#?}", tokens);
             }
             Stage::Parser => {
                 let mut parser = Parser::new(tokens.take().unwrap());
                 ast = Some(parser.parse_program()?);
-                println!("The ast is {:#?}", ast);
             }
             Stage::TackyGen => {
-                tacky_ast = Some(generate_tacky_ast(
-                    ast.take().expect("Parser must run before tacky generation"),
-                )?);
-                println!("The tacky ast it {:#?}", tacky_ast);
+                tacky_ast = Some(generate_tacky_ast(ast.take().unwrap()));
             }
             Stage::Codegen => {
-                asm = Some(generate_asm_ast(tacky_ast.take().expect("blah"))?);
-                println!("The asm ast is {:#?}", asm);
+                asm = Some(generate_asm_ast(tacky_ast.take().unwrap()?)?);
             }
         }
     }
