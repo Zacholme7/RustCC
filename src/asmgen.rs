@@ -139,6 +139,7 @@ fn generate_asm_instructions(
                 asm_instructions.push(AsmInstruction::Mov(asm_src, asm_dst.clone()));
                 asm_instructions.push(AsmInstruction::Unary(asm_un_op, asm_dst));
             }
+            _ => todo!()
         }
     }
     Ok(asm_instructions)

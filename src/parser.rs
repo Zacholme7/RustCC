@@ -120,6 +120,8 @@ impl Parser {
         Ok(left)
     }
 
+
+    // <factor> ::= <int> | <unop> <factor> | "(" <exp> ")" 
     fn parse_factor(&mut self) -> Result<AstExpression, CompileError> {
         let next_token = self.tokens.peek();
         match next_token {
