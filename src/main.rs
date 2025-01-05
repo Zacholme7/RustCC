@@ -99,7 +99,7 @@ fn main() -> Result<()> {
 
         // assemble and link
         let executable = assemble_and_link(&asm_file).unwrap();
-        let _ = fs::remove_file(executable);
+        //let _ = fs::remove_file(executable);
     }
     Ok(())
 }
@@ -116,7 +116,7 @@ fn assemble_and_link(asm_file: &Path) -> Result<PathBuf> {
         .arg("-o")
         .arg(&output_file)
         .output()
-        .unwrap();
+        .expect("Failed to assemble and link");
     Ok(output_file)
 }
 

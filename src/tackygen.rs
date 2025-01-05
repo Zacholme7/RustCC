@@ -77,6 +77,7 @@ fn generate_tacky_instructions(
             tacky_instructions.push(TackyInstruction::Unary(tacky_op, src, dst.clone()));
             Ok(dst)
         }
+        _ => todo!()
     }
 }
 

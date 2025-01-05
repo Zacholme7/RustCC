@@ -30,6 +30,7 @@ pub enum AstStatement {
 pub enum AstExpression {
     Constant(usize),
     Unary(AstUnaryOp, Box<AstExpression>),
+    Binary(AstBinaryOp, Box<AstExpression>, Box<AstExpression>),
 }
 
 // unary_operator = Complement | Negate
@@ -37,6 +38,16 @@ pub enum AstExpression {
 pub enum AstUnaryOp {
     Complement,
     Negate,
+}
+
+// binary_operator = Add | Subtract | Multiply | Divide | Remainder
+#[derive(Debug)]
+pub enum AstBinaryOp {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Remainder
 }
 
 #[derive(Debug)]
@@ -90,12 +101,26 @@ impl Parser {
     // <statement> ::= "return" <exp> ";"
     fn parse_statement(&mut self) -> Result<AstStatement, CompileError> {
         self.expect(Token::Keyword(KeywordType::Return))?;
-        let expression = self.parse_expression()?;
+        let expression = self.parse_expression(0)?;
         Ok(AstStatement::Return(expression))
     }
 
-    // <exp> ::= <int> | <unop> <exp> | "(" <exp> ")"
-    fn parse_expression(&mut self) -> Result<AstExpression, CompileError> {
+    // <exp> ::= <factor> | <exp> <binop> <exp>
+    fn parse_expression(&mut self, min_prec: usize) -> Result<AstExpression, CompileError> {
+        let mut left = self.parse_factor()?;
+        let mut next_token = self.tokens.peek().ok_or(CompileError::InvalidParse("Expected Token".to_string()))?.clone();
+        let mut prec = self.get_prec(&next_token);
+        while [Token::Hyphen, Token::ForwardSlash, Token::PercentSign, Token::Plus, Token::Asterisk].contains(&next_token) && prec >= min_prec {
+            let operator = self.parse_binop()?;
+            let right = self.parse_expression(prec + 1)?;
+            left = AstExpression::Binary(operator, Box::new(left), Box::new(right));
+            next_token = self.tokens.peek().ok_or(CompileError::InvalidParse("Expected Token".to_string()))?.clone();
+            prec = self.get_prec(&next_token);
+        }
+        Ok(left)
+    }
+
+    fn parse_factor(&mut self) -> Result<AstExpression, CompileError> {
         let next_token = self.tokens.peek();
         match next_token {
             Some(Token::Number(_)) => {
@@ -104,12 +129,12 @@ impl Parser {
             }
             Some(Token::Tilde) | Some(Token::Hyphen) => {
                 let operator = self.parse_unop()?;
-                let inner_exp = self.parse_expression()?;
+                let inner_exp = self.parse_factor()?;
                 Ok(AstExpression::Unary(operator, Box::new(inner_exp)))
-            }
+            },
             Some(Token::OpenParen) => {
                 self.tokens.next();
-                let inner_exp = self.parse_expression()?;
+                let inner_exp = self.parse_expression(0)?;
                 self.expect(Token::CloseParen)?;
                 Ok(inner_exp)
             }
@@ -119,6 +144,7 @@ impl Parser {
         }
     }
 
+
     // <unop> ::= "-" | "~"
     fn parse_unop(&mut self) -> Result<AstUnaryOp, CompileError> {
         match self.tokens.next() {
@@ -127,6 +153,21 @@ impl Parser {
             _ => Err(CompileError::InvalidParse(
                 "Expected unary opeartor".to_string(),
             )),
+        }
+    }
+
+    // <binop> ::= "-" | "+" | "*" | "/" | "%"
+    fn parse_binop(&mut self) -> Result<AstBinaryOp, CompileError> {
+        match self.tokens.next() {
+            Some(Token::Hyphen) => Ok(AstBinaryOp::Subtract),
+            Some(Token::Plus) => Ok(AstBinaryOp::Add),
+            Some(Token::Asterisk) => Ok(AstBinaryOp::Multiply),
+            Some(Token::ForwardSlash) => Ok(AstBinaryOp::Divide),
+            Some(Token::PercentSign) => Ok(AstBinaryOp::Remainder),
+            _ => Err(CompileError::InvalidParse(
+                "Expected unary opeartor".to_string(),
+            )),
+
         }
     }
 
@@ -149,6 +190,15 @@ impl Parser {
             )))
         } else {
             Ok(true)
+        }
+    }
+
+    // Gets the precedence level of a binary operator
+    fn get_prec(&self, bin_op: &Token) -> usize {
+        match bin_op {
+            Token::Plus | Token::Hyphen => 45,
+            Token::Asterisk | Token::ForwardSlash | Token::PercentSign => 50,
+            _ => 0
         }
     }
 }
