@@ -78,16 +78,20 @@ fn main() -> Result<()> {
         match stage {
             Stage::Lexer => {
                 tokens = Some(program_to_tokens(program.as_str())?);
+                println!("Tokens {:#?}", tokens);
             }
             Stage::Parser => {
                 let mut parser = Parser::new(tokens.take().unwrap());
                 ast = Some(parser.parse_program()?);
+                println!("ast {:#?}", ast);
             }
             Stage::TackyGen => {
                 tacky_ast = Some(generate_tacky_ast(ast.take().unwrap()));
+                println!("tacky ast {:#?}", tacky_ast);
             }
             Stage::Codegen => {
                 asm = Some(generate_asm_ast(tacky_ast.take().unwrap()?)?);
+                println!("asm {:#?}", asm);
             }
         }
     }

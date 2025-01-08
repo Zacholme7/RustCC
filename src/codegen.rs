@@ -34,6 +34,7 @@ impl fmt::Display for AsmInstruction {
                 writeln!(f, "\tpopq  %rbp")?;
                 writeln!(f, "\tret")
             }
+            _ => todo!()
         }
     }
 }
@@ -54,6 +55,7 @@ impl fmt::Display for AsmReg {
         match self {
             AsmReg::AX => write!(f, "%eax"),
             AsmReg::R10 => write!(f, "%r10d"),
+            _ => todo!()
         }
     }
 }
