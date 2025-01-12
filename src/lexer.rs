@@ -20,6 +20,16 @@ lazy_static! {
         ("Tilde", Regex::new(r"^~").unwrap()),
         ("Two Hyphen", Regex::new(r"^--").unwrap()),
         ("Hyphen", Regex::new(r"^-").unwrap()),
+        ("Exclamation", Regex::new(r"^!").unwrap()),
+        ("Two Ampersand", Regex::new(r"^&&").unwrap()),
+        ("Two Equal", Regex::new(r"^==").unwrap()),
+        ("Equal", Regex::new(r"^=").unwrap()),
+        ("Two Bar", Regex::new(r"^\|\|").unwrap()),
+        ("Exclamation Equal", Regex::new(r"^!=").unwrap()),
+        ("Less Than Equal", Regex::new(r"^<=").unwrap()),
+        ("Greater Than Equal", Regex::new(r"^>=").unwrap()),
+        ("Less Than", Regex::new(r"^<").unwrap()),
+        ("Greater Than", Regex::new(r"^>").unwrap()),
     ];
 }
 
@@ -41,6 +51,16 @@ pub enum Token {
     TwoHyphen,
     Hyphen,
     Semicolon,
+    Exclamation,
+    TwoAmpersand,
+    TwoBar,
+    TwoEqual,
+    Equal,
+    ExclamationEqual,
+    LessThanEqual,
+    GreaterThanEqual,
+    LessThan,
+    GreaterThan,
 }
 
 // Reserved Keywords
@@ -77,6 +97,16 @@ pub fn program_to_tokens(program: &str) -> Result<Vec<Token>, CompileError> {
                 "*" => Token::Asterisk,
                 "/" => Token::ForwardSlash,
                 "%" => Token::PercentSign,
+                "!" => Token::Exclamation,
+                "&&" => Token::TwoAmpersand,
+                "||" => Token::TwoBar,
+                "==" => Token::TwoEqual,
+                "=" => Token::Equal,
+                "!=" => Token::ExclamationEqual,
+                "<=" => Token::LessThanEqual,
+                ">=" => Token::GreaterThanEqual,
+                "<" => Token::LessThan,
+                ">" => Token::GreaterThan,
                 _ if tok_str.chars().next().unwrap().is_alphabetic() => {
                     if ["int", "void", "return"].contains(&tok_str) {
                         match tok_str {
