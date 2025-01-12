@@ -201,7 +201,7 @@ fn generate_asm_function(
                         // Store it in the desination: movl R11 dest
                         fixed_asm_instructions.push(AsmInstruction::Mov(
                             AsmOperand::Reg(AsmReg::R11),
-                            op1.clone()
+                            op2.clone()
                         ));
                     }
                 }

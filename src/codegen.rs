@@ -28,13 +28,15 @@ impl fmt::Display for AsmInstruction {
         match self {
             AsmInstruction::Mov(op1, op2) => writeln!(f, "\tmovl  {}, {}", op1, op2),
             AsmInstruction::Unary(unop, op) => writeln!(f, "\t{}  {}", unop, op),
+            AsmInstruction::Binary(bin_op, op1, op2) => writeln!(f, "\t{} {}, {}", bin_op, op1, op2),
+            AsmInstruction::Idiv(op) => writeln!(f, "\tidivl {}", op),
+            AsmInstruction::Cdq => writeln!(f, "cdq"),
             AsmInstruction::AllocateStack(offset) => writeln!(f, "\tsubq  ${}, %rsp", offset),
             AsmInstruction::Ret => {
                 writeln!(f, "\tmovq  %rbp, %rsp")?;
                 writeln!(f, "\tpopq  %rbp")?;
                 writeln!(f, "\tret")
             }
-            _ => todo!()
         }
     }
 }
@@ -54,8 +56,9 @@ impl fmt::Display for AsmReg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AsmReg::AX => write!(f, "%eax"),
+            AsmReg::DX => write!(f, "%edx"),
             AsmReg::R10 => write!(f, "%r10d"),
-            _ => todo!()
+            AsmReg::R11 => write!(f, "%r11d"),
         }
     }
 }
@@ -68,3 +71,24 @@ impl fmt::Display for AsmUnOp {
         }
     }
 }
+
+impl fmt::Display for AsmBinOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AsmBinOp::Add => write!(f, "addl"),
+            AsmBinOp::Sub => write!(f, "subl"),
+            AsmBinOp::Mul => write!(f, "imull")
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
