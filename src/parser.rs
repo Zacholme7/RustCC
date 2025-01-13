@@ -33,21 +33,31 @@ pub enum AstExpression {
     Binary(AstBinaryOp, Box<AstExpression>, Box<AstExpression>),
 }
 
-// unary_operator = Complement | Negate
+// unary_operator = Complement | Negate | Not
 #[derive(Debug)]
 pub enum AstUnaryOp {
     Complement,
     Negate,
+    Not,
 }
 
-// binary_operator = Add | Subtract | Multiply | Divide | Remainder
+// binary_operator = Add | Subtract | Multiply | Divide | Remainder | And | Or | Equal | NotEqual |
+// Less Than | LessOrEqual | GreaterThan | GreaterOrEqual
 #[derive(Debug)]
 pub enum AstBinaryOp {
     Add,
     Subtract,
     Multiply,
     Divide,
-    Remainder
+    Remainder,
+    And,
+    Or,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessOrEqual,
+    GreaterThan,
+    GreaterOrEqual,
 }
 
 #[derive(Debug)]
@@ -108,20 +118,44 @@ impl Parser {
     // <exp> ::= <factor> | <exp> <binop> <exp>
     fn parse_expression(&mut self, min_prec: usize) -> Result<AstExpression, CompileError> {
         let mut left = self.parse_factor()?;
-        let mut next_token = self.tokens.peek().ok_or(CompileError::InvalidParse("Expected Token".to_string()))?.clone();
+        let mut next_token = self
+            .tokens
+            .peek()
+            .ok_or(CompileError::InvalidParse("Expected Token".to_string()))?
+            .clone();
         let mut prec = self.get_prec(&next_token);
-        while [Token::Hyphen, Token::ForwardSlash, Token::PercentSign, Token::Plus, Token::Asterisk].contains(&next_token) && prec >= min_prec {
+        while [
+            Token::Hyphen,
+            Token::ForwardSlash,
+            Token::PercentSign,
+            Token::Plus,
+            Token::Asterisk,
+            Token::LessThan,
+            Token::LessThanEqual,
+            Token::GreaterThan,
+            Token::GreaterThanEqual,
+            Token::TwoEqual,
+            Token::ExclamationEqual,
+            Token::TwoAmpersand,
+            Token::TwoBar,
+        ]
+        .contains(&next_token)
+            && prec >= min_prec
+        {
             let operator = self.parse_binop()?;
             let right = self.parse_expression(prec + 1)?;
             left = AstExpression::Binary(operator, Box::new(left), Box::new(right));
-            next_token = self.tokens.peek().ok_or(CompileError::InvalidParse("Expected Token".to_string()))?.clone();
+            next_token = self
+                .tokens
+                .peek()
+                .ok_or(CompileError::InvalidParse("Expected Token".to_string()))?
+                .clone();
             prec = self.get_prec(&next_token);
         }
         Ok(left)
     }
 
-
-    // <factor> ::= <int> | <unop> <factor> | "(" <exp> ")" 
+    // <factor> ::= <int> | <unop> <factor> | "(" <exp> ")"
     fn parse_factor(&mut self) -> Result<AstExpression, CompileError> {
         let next_token = self.tokens.peek();
         match next_token {
@@ -129,11 +163,11 @@ impl Parser {
                 let constant = self.parse_int()?;
                 Ok(constant)
             }
-            Some(Token::Tilde) | Some(Token::Hyphen) => {
+            Some(Token::Tilde) | Some(Token::Hyphen) | Some(Token::Exclamation) => {
                 let operator = self.parse_unop()?;
                 let inner_exp = self.parse_factor()?;
                 Ok(AstExpression::Unary(operator, Box::new(inner_exp)))
-            },
+            }
             Some(Token::OpenParen) => {
                 self.tokens.next();
                 let inner_exp = self.parse_expression(0)?;
@@ -141,17 +175,17 @@ impl Parser {
                 Ok(inner_exp)
             }
             _ => Err(CompileError::InvalidParse(
-                "Expected expression".to_string(),
+                "Expected factor".to_string(),
             )),
         }
     }
 
-
-    // <unop> ::= "-" | "~"
+    // <unop> ::= "-" | "~" | "!"
     fn parse_unop(&mut self) -> Result<AstUnaryOp, CompileError> {
         match self.tokens.next() {
             Some(Token::Tilde) => Ok(AstUnaryOp::Complement),
             Some(Token::Hyphen) => Ok(AstUnaryOp::Negate),
+            Some(Token::Exclamation) => Ok(AstUnaryOp::Not),
             _ => Err(CompileError::InvalidParse(
                 "Expected unary opeartor".to_string(),
             )),
@@ -166,10 +200,17 @@ impl Parser {
             Some(Token::Asterisk) => Ok(AstBinaryOp::Multiply),
             Some(Token::ForwardSlash) => Ok(AstBinaryOp::Divide),
             Some(Token::PercentSign) => Ok(AstBinaryOp::Remainder),
+            Some(Token::TwoAmpersand) => Ok(AstBinaryOp::And),
+            Some(Token::TwoBar) => Ok(AstBinaryOp::Or),
+            Some(Token::TwoEqual) => Ok(AstBinaryOp::Equal),
+            Some(Token::ExclamationEqual) => Ok(AstBinaryOp::NotEqual),
+            Some(Token::LessThan) => Ok(AstBinaryOp::LessThan),
+            Some(Token::LessThanEqual) => Ok(AstBinaryOp::LessOrEqual),
+            Some(Token::GreaterThan) => Ok(AstBinaryOp::GreaterThan),
+            Some(Token::GreaterThanEqual) => Ok(AstBinaryOp::GreaterOrEqual),
             _ => Err(CompileError::InvalidParse(
                 "Expected unary opeartor".to_string(),
             )),
-
         }
     }
 
@@ -198,9 +239,16 @@ impl Parser {
     // Gets the precedence level of a binary operator
     fn get_prec(&self, bin_op: &Token) -> usize {
         match bin_op {
-            Token::Plus | Token::Hyphen => 45,
             Token::Asterisk | Token::ForwardSlash | Token::PercentSign => 50,
-            _ => 0
+            Token::Plus | Token::Hyphen => 45,
+            Token::LessThan
+            | Token::LessThanEqual
+            | Token::GreaterThan
+            | Token::GreaterThanEqual => 35,
+            Token::TwoEqual | Token::ExclamationEqual => 30,
+            Token::TwoAmpersand => 10,
+            Token::TwoBar => 5,
+            _ => 0,
         }
     }
 }

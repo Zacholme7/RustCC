@@ -122,6 +122,7 @@ fn generate_tacky_binop(ast_binary_op: AstBinaryOp) -> TackyBinaryOp {
         AstBinaryOp::Divide => TackyBinaryOp::Divide,
         AstBinaryOp::Multiply => TackyBinaryOp::Multiply,
         AstBinaryOp::Remainder => TackyBinaryOp::Remainder,
+        _ => todo!()
     }
 }
 
@@ -130,6 +131,7 @@ fn generate_tacky_unop(ast_unary_op: AstUnaryOp) -> TackyUnaryOp {
     match ast_unary_op {
         AstUnaryOp::Complement => TackyUnaryOp::Complement,
         AstUnaryOp::Negate => TackyUnaryOp::Negate,
+        _ => todo!()
     }
 }
 
